@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!--
+  Exercício 10 - Cliente de Chat WebSocket (navegador)
+  Redes de Computadores 2 - Prof. Alessandro Vivas Andrade
+  Integrantes do grupo: NOME COMPLETO 1, NOME COMPLETO 2, NOME COMPLETO 3
+
+  Cliente alternativo usando a WebSocket API nativa do navegador.
+  Usa o mesmo protocolo JSON do cliente Python, então os dois conversam
+  entre si na mesma sala.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Chat WebSocket</title>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: 2em auto; }
+  #log { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: .5em; }
+  .sistema { color: #777; font-style: italic; }
+  .erro { color: #c00; }
+  input { padding: .4em; }
+</style>
+</head>
+<body>
+<h2>Chat WebSocket</h2>
+<p>
+  Servidor: <input id="url" value="ws://localhost:8765" size="25">
+  Nome: <input id="nome" size="12">
+  <button id="entrar">Entrar</button>
+</p>
+<div id="log"></div>
+<p>
+  <input id="texto" size="45" placeholder="Mensagem" disabled>
+  <button id="enviar" disabled>Enviar</button>
+  <button id="sair" disabled>Sair</button>
+</p>
+<script>
+  let ws = null;
+  const $ = (id) => document.getElementById(id);
+
+  // Acrescenta uma linha ao histórico (textContent evita injeção de HTML).
+  function mostrar(texto, classe = "") {
+    const div = document.createElement("div");
+    div.textContent = texto;
+    div.className = classe;
+    $("log").appendChild(div);
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+
+  function habilitarChat(ativo) {
+    $("texto").disabled = $("enviar").disabled = $("sair").disabled = !ativo;
+    $("entrar").disabled = ativo;
+  }
+
+  $("entrar").onclick = () => {
+    const nome = $("nome").value.trim();
+    if (!nome) { mostrar("Informe um nome.", "erro"); return; }
+
+    ws = new WebSocket($("url").value);
+    // Ao abrir, envia a mensagem de registro.
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ tipo: "entrar", nome }));
+      habilitarChat(true);
+    };
+    // Cada mensagem recebida é exibida conforme o tipo.
+    ws.onmessage = (evento) => {
+      const d = JSON.parse(evento.data);
+      if (d.tipo === "mensagem") mostrar(`[${d.nome}] ${d.texto}`);
+      else if (d.tipo === "sistema") mostrar(`*** ${d.texto} ***`, "sistema");
+      else mostrar(`ERRO: ${d.texto}`, "erro");
+    };
+    ws.onerror = () => mostrar("Erro de conexão com o servidor.", "erro");
+    ws.onclose = () => { mostrar("Desconectado.", "sistema"); habilitarChat(false); };
+  };
+
+  function enviar() {
+    const texto = $("texto").value.trim();
+    if (!texto || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ tipo: "mensagem", texto }));
+    mostrar(`[você] ${texto}`);
+    $("texto").value = "";
+  }
+  $("enviar").onclick = enviar;
+  $("texto").onkeydown = (e) => { if (e.key === "Enter") enviar(); };
+  $("sair").onclick = () => ws && ws.close();
+</script>
+</body>
+</html>
