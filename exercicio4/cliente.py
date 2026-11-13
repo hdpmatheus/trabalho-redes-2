@@ -1,4 +1,4 @@
-# Participantes: NOME DOS INTEGRANTES DO GRUPO
+# Participantes: Thais Carvalho, Vicente Alves, Matheus Henrique
 
 import socket
 import argparse
